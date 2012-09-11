@@ -62,9 +62,9 @@ EOF");
 		auto sClass = bClass[0..GetClassName (h, bClass.ptr, bClass.length)];
 		RECT r;
 		GetWindowRect(h, &r);
-		if (sText)
+		if (sText.length)
 			sb.put(sText, " : ");
-		sb.put(sClass/*, format(" (%d,%d - %d,%d)", r.left, r.top, r.right, r.bottom)*/);
+		sb.put(sClass, format(" (%d,%d - %d,%d)", r.left, r.top, r.right, r.bottom));
 		sb.put(` [`
 			`<a href="/show/`, hs, `" title="show">s</a>`
 			`<a href="/hide/`, hs, `" title="hide">h</a>`
@@ -87,11 +87,6 @@ EOF");
 	return sb.get();
 }
 
-HWND parseHwnd(string str)
-{
-	return cast(HWND)to!uint(str, 16);
-}
-
 void main()
 {
 	void onRequest(HttpRequest request, HttpServerConnection conn)
@@ -101,6 +96,8 @@ void main()
 		{
 			enforce(request.resource.startsWith('/'), "Invalid path");
 			auto segments = request.resource.split("/");
+
+			HWND parseHwnd(string str) { return cast(HWND)to!uint(str, 16); }
 
 			switch (segments[1])
 			{
