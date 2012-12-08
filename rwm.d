@@ -13,13 +13,13 @@ import ae.utils.textout;
 
 import ae.sys.log;
 
-struct Action { char link; string name; string function(string[] args) f; }
+struct Action { char link; string name, description; string function(string[] args) f; }
 const Action[] actions =
 [
-	Action('s', "show"   , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_SHOW); return string.init; } ),
-	Action('h', "hide"   , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_HIDE); return string.init; } ),
-	Action('e', "enable" , function(string[] args) { EnableWindow(parseHwnd(args[0]), TRUE   ); return string.init; } ),
-	Action('d', "disable", function(string[] args) { EnableWindow(parseHwnd(args[0]), FALSE  ); return string.init; } ),
+	Action('s', "show"   , "show"         , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_SHOW); return string.init; } ),
+	Action('h', "hide"   , "hide"         , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_HIDE); return string.init; } ),
+	Action('e', "enable" , "enable"       , function(string[] args) { EnableWindow(parseHwnd(args[0]), TRUE   ); return string.init; } ),
+	Action('d', "disable", "disable"      , function(string[] args) { EnableWindow(parseHwnd(args[0]), FALSE  ); return string.init; } ),
 ];
 
 string buildHtml()
@@ -76,7 +76,7 @@ EOF");
 		sb.put(sClass, format(" (%d,%d - %d,%d)", r.left, r.top, r.right, r.bottom));
 		sb.put(` [`);
 		foreach (action; actions)
-			sb.put(`<a href="/`, action.name, `/`, hs, `" title="`, action.name, `">`, action.link, `</a>`);
+			sb.put(`<a href="/`, action.name, `/`, hs, `" title="`, action.description, `">`, action.link, `</a>`);
 		sb.put(`]`);
 
   		HWND c = FindWindowEx(h, null, null, null);
@@ -98,6 +98,8 @@ void main()
 	void onRequest(HttpRequest request, HttpServerConnection conn)
 	{
 		auto response = new HttpResponseEx();
+		scope(exit) conn.sendResponse(response);
+
 		try
 		{
 			enforce(request.resource.startsWith('/'), "Invalid path");
@@ -107,24 +109,24 @@ void main()
 			{
 				enforce(segments.length == 2);
 				response.serveData(buildHtml());
+				return;
 			}
-			else
-			{
-				foreach (action; actions)
-					if (segments[1] == action.name)
-					{
-						action.f(segments[2..$]);
-						response.redirect("/");
-					}
-				throw new Exception("Unknown resource");
-			}
+
+			foreach (action; actions)
+				if (segments[1] == action.name)
+				{
+					action.f(segments[2..$]);
+					response.redirect("/");
+					return;
+				}
+
+			throw new Exception("Unknown resource");
 		}
 		catch (Exception e)
 		{
 			response.serveText(e.msg);
 			response.setStatus(HttpStatusCode.InternalServerError);
 		}
-		conn.sendResponse(response);
 	}
 
 	auto server = new HttpServer();
