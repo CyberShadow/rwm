@@ -13,6 +13,15 @@ import ae.utils.textout;
 
 import ae.sys.log;
 
+struct Action { char link; string name; string function(string[] args) f; }
+const Action[] actions =
+[
+	Action('s', "show"   , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_SHOW); return string.init; } ),
+	Action('h', "hide"   , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_HIDE); return string.init; } ),
+	Action('e', "enable" , function(string[] args) { EnableWindow(parseHwnd(args[0]), TRUE   ); return string.init; } ),
+	Action('d', "disable", function(string[] args) { EnableWindow(parseHwnd(args[0]), FALSE  ); return string.init; } ),
+];
+
 string buildHtml()
 {
 	StringBuilder sb;
@@ -65,13 +74,10 @@ EOF");
 		if (sText.length)
 			sb.put(sText, " : ");
 		sb.put(sClass, format(" (%d,%d - %d,%d)", r.left, r.top, r.right, r.bottom));
-		sb.put(` [`
-			`<a href="/show/`, hs, `" title="show">s</a>`
-			`<a href="/hide/`, hs, `" title="hide">h</a>`
-			`<a href="/enable/`, hs, `" title="enable">e</a>`
-			`<a href="/disable/`, hs, `" title="disable">d</a>`
-			`]`
-		);
+		sb.put(` [`);
+		foreach (action; actions)
+			sb.put(`<a href="/`, action.name, `/`, hs, `" title="`, action.name, `">`, action.link, `</a>`);
+		sb.put(`]`);
 
   		HWND c = FindWindowEx(h, null, null, null);
   		while (c)
@@ -97,28 +103,20 @@ void main()
 			enforce(request.resource.startsWith('/'), "Invalid path");
 			auto segments = request.resource.split("/");
 
-			HWND parseHwnd(string str) { return cast(HWND)to!uint(str, 16); }
-
-			switch (segments[1])
+			if (segments[1] == "") // index
 			{
-				case "": // index
-					enforce(segments.length == 2);
-					response.serveData(buildHtml());
-					break;
-				case "show":
-					ShowWindow(parseHwnd(segments[2]), SW_SHOW);
-					response.redirect("/"); break;
-				case "hide":
-					ShowWindow(parseHwnd(segments[2]), SW_HIDE);
-					response.redirect("/"); break;
-				case "enable":
-					EnableWindow(parseHwnd(segments[2]), TRUE);
-					response.redirect("/"); break;
-				case "disable":
-					EnableWindow(parseHwnd(segments[2]), FALSE);
-					response.redirect("/"); break;
-				default:
-					throw new Exception("Unknown resource");
+				enforce(segments.length == 2);
+				response.serveData(buildHtml());
+			}
+			else
+			{
+				foreach (action; actions)
+					if (segments[1] == action.name)
+					{
+						action.f(segments[2..$]);
+						response.redirect("/");
+					}
+				throw new Exception("Unknown resource");
 			}
 		}
 		catch (Exception e)
@@ -136,3 +134,5 @@ void main()
 
 	socketManager.loop();
 }
+
+HWND parseHwnd(string str) { return cast(HWND)to!uint(str, 16); }
