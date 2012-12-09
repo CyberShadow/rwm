@@ -20,6 +20,7 @@ const Action[] actions =
 	Action('h', "hide"   , "hide"         , function(string[] args) { ShowWindow  (parseHwnd(args[0]), SW_HIDE); return string.init; } ),
 	Action('e', "enable" , "enable"       , function(string[] args) { EnableWindow(parseHwnd(args[0]), TRUE   ); return string.init; } ),
 	Action('d', "disable", "disable"      , function(string[] args) { EnableWindow(parseHwnd(args[0]), FALSE  ); return string.init; } ),
+	Action('m', "move"   , "move to (0,0)", function(string[] args) { MoveWindowTo00(parseHwnd(args[0])       ); return string.init; } ),
 ];
 
 string buildHtml()
@@ -138,3 +139,10 @@ void main()
 }
 
 HWND parseHwnd(string str) { return cast(HWND)to!uint(str, 16); }
+
+void MoveWindowTo00(HWND h)
+{
+	RECT r;
+	GetWindowRect(h, &r);
+	MoveWindow(h, 0, 0, r.right-r.left, r.bottom-r.top, TRUE);
+}
